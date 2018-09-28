@@ -1,0 +1,47 @@
+How to use these files
+
+simply typing make will build you everything including sample certificates for
+PK, KEK and db.
+
+The prerequisites are the standard development environment, gnu-efi version
+3.0q or later, help2man and sbsigntools.
+
+
+Creating, using and installing your own keys
+============================================
+
+To create PEM files with the certificate and the key for PK for example, do
+
+openssl req -new -x509 -newkey rsa:2048 -subj "/CN=PK/" -keyout PK.key -out PK.crt -days 3650 -nodes -sha256
+
+Which will create a self signed X509 certificate for PK in PK.crt (using
+unprotected key PK.key with the subject common name PK (that's what the CN=PK
+is doing).
+
+You need to create at least three sets of certificates: one for PK, one for
+KEK and one for db.
+
+Now you need to take all the efi binaries in /usr/share/efitools/efi and sign
+them with your own db key using
+
+sbsign --key db.key --cert db.crt --output HelloWorld-signed.efi HelloWorld.efi
+
+To install your new keys on the platform, first create your authorised update
+bundles:
+
+cert-to-sig-list PK.crt PK.esl
+sign-efi-sig-list -k PK.key -c PK.crt PK PK.esl PK.auth
+
+And repeat for KEK and db.  In setup mode, it only matters that the PK update
+PK.auth is signed by the new platform key.  None of the other variables will
+have their signatures checked.
+
+Now on your platform update the variables, remembering to do PK last because
+an update to PK usually puts the platform into secure mode
+
+UpdateVars db db.auth
+UpdateVars KEK KEK.auth
+UpdateVars PK PK.auth
+
+And you should now be running in secure mode with your own keys.
+
